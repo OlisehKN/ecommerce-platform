@@ -10,7 +10,7 @@ spec:
 
   # Source of truth: your Git repository containing the K8s manifests
   source:
-    repoURL: "https://https://github.com/OlisehKN/ecommerce-platform"
+    repoURL: "https://https://github.com/OlisehKN/ecommerce-platform.git"
     targetRevision: main
     path: "deploy/k8s/product-service"
 
