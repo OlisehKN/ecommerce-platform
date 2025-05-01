@@ -18,7 +18,13 @@
 
   - Create a new project directory named **ecommerce-platform.**
 
+![Screenshot (374)](https://github.com/user-attachments/assets/7f67f8a6-0eaf-4e9f-8f7e-0002100a2be0)
+
   - Inside, create subdirectories for each microservice: **product-service**, **cart-service**, **order-service**.
+
+![Screenshot (374)](https://github.com/user-attachments/assets/27636f7b-6a62-4d06-9b05-ba3aa1e15277)
+![Screenshot (376)](https://github.com/user-attachments/assets/7a682368-fb50-4a1a-ac10-85e8952484f8)
+![Screenshot (377)](https://github.com/user-attachments/assets/4c5a28b8-3ddd-4575-b370-7ad30a050769)
 
 ### <ins>**Task 2: Initialize Git Repository:**</ins>
 
