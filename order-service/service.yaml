@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: order-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: order-service
+spec:
+  project: default
+
+  # Git repository containing K8s manifests for order-service
+  source:
+    repoURL: "https://github.com/OlisehKN/ecommerce-platform.git"
+    targetRevision: main
+    path: "deploy/k8s/order-service"
+
+  # Deploy into this cluster and namespace
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: order-service
+
+  # Automated sync and self-heal
+  syncPolicy:
+    automated:
+      prune: true        # remove resources if deleted in Git
+      selfHeal: true     # revert drift
+    syncOptions:
+      - CreateNamespace=true  # ensure namespace exists
