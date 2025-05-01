@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: product-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: product-service
+spec:
+  project: default
+
+  # Source of truth: your Git repository containing the K8s manifests
+  source:
+    repoURL: "https://https://github.com/OlisehKN/ecommerce-platform"
+    targetRevision: main
+    path: "deploy/k8s/product-service"
+
+  # Where to deploy in the cluster
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: product-service
+
+  # Automatically sync changes and self-heal drift
+  syncPolicy:
+    automated:
+      prune: true        # delete resources removed from Git
+      selfHeal: true     # revert out-of-band changes
+    syncOptions:
+      - CreateNamespace=true  # create namespace if it doesn't exist
+
+  # Health checks based on CRDs
+  # (ArgoCD can assess Deployment and Service health by default)
