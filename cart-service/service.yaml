@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: cart-service
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: cart-service
+spec:
+  project: default
+
+  # Source repo containing the cart-service K8s manifests
+  source:
+    repoURL: "https://https://github.com/OlisehKN/ecommerce-platform.git"
+    targetRevision: main
+    path: "deploy/k8s/cart-service"
+
+  # Deploy into this cluster and namespace
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: cart-service
+
+  # Auto-sync and self-heal
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
