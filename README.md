@@ -325,18 +325,345 @@
 
   - Install ArgoCD in a Kubernetes cluster.
 
-    - 
+    - firstly, i created a new namespace for the ArgoCD with the following command line
+
+          kubectl create namespace argocd
+
+    - After creating the namespace then i installed the ArgoCd into the namespace with the following code
+   
+          kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/master/manifests/install.yaml
+
+    - After the installation, I can check the deployments of the microservices with the following code
+   
+          kubectl get all -n argocd
+
+    - Lastly for me to able to access the ArgoCD API server from outside the cluster, i had to use post-forward a port to the service and then forawrd it to the localhost with the following code
+   
+          kubectl port-forward svc/argocd-server -n argocd 8080:443  
+          Forwarding from 127.0.0.1:8080 -> 8080
+          Forwarding from [::1]:8080 -> 8080
+
+![image](https://github.com/user-attachments/assets/a93bfe2f-b251-471e-988c-9b21c2af8838)
 
   - Connect your Git repository to ArgoCD.
+
+    - On the command line interface, i used the following code (editing in my Github details into the appropriate sections) to connect my GitHub repo to ArgoCD.
+   
+          argocd repo add <repository-url> --username <username> --password <password>
 
 ### <ins>**Task 7: Kubernetes Deployment:**</ins>
 
   - Create Kubernetes deployment YAML files for each microservice.
 
+    - <ins>**product-service**</ins>
+
+          # Kubernetes Deployment and Service for product-service
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: product-service
+            labels:
+              app: product-service
+          spec:
+            replicas: 3
+            selector:
+              matchLabels:
+                app: product-service
+            template:
+              metadata:
+                labels:
+                  app: product-service
+              spec:
+                containers:
+                - name: product-service
+                  # Use the Docker image built from the provided Node.js Dockerfile
+                  image: your-docker-repo/product-service:latest
+                  ports:
+                  - containerPort: 3000
+                  env:
+                  - name: DATABASE_HOST
+                    value: "product-db"
+                  - name: DATABASE_PORT
+                    value: "5432"
+                  - name: DATABASE_NAME
+                    value: "products"
+                  - name: DATABASE_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: product-db-secret
+                        key: username
+                  - name: DATABASE_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: product-db-secret
+                        key: password
+                  readinessProbe:
+                    httpGet:
+                      path: /healthz
+                      port: 3000
+                    initialDelaySeconds: 5
+                    periodSeconds: 10
+                  livenessProbe:
+                    httpGet:
+                      path: /healthz
+                      port: 3000
+                    initialDelaySeconds: 15
+                    periodSeconds: 20
+   
+    - <ins>**cart-service**</ins>
+
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: cart-service
+            labels:
+              app: cart-service
+          spec:
+            replicas: 3
+            selector:
+              matchLabels:
+                app: cart-service
+            template:
+              metadata:
+                labels:
+                  app: cart-service
+              spec:
+                containers:
+                - name: cart-service
+                  # Use the Docker image built from the provided Node.js Dockerfile
+                  image: your-docker-repo/cart-service:latest
+                  ports:
+                  - containerPort: 3000
+                  # Example environment variables (e.g. Redis for cart storage)
+                  env:
+                  - name: REDIS_HOST
+                    value: "redis"
+                  - name: REDIS_PORT
+                    value: "6379"
+                  readinessProbe:
+                    httpGet:
+                      path: /healthz
+                      port: 3000
+                    initialDelaySeconds: 5
+                    periodSeconds: 10
+                  livenessProbe:
+                    httpGet:
+                      path: /healthz
+                      port: 3000
+                    initialDelaySeconds: 15
+                    periodSeconds: 20
+   
+    - <ins>**order-service**</ins>
+
+          apiVersion: apps/v1
+          kind: Deployment
+          metadata:
+            name: order-service
+            labels:
+              app: order-service
+          spec:
+            replicas: 3
+            selector:
+              matchLabels:
+                app: order-service
+            template:
+              metadata:
+                labels:
+                  app: order-service
+              spec:
+                containers:
+                - name: order-service
+                  # Use the Docker image built from the provided Node.js Dockerfile
+                  image: your-docker-repo/order-service:latest
+                  ports:
+                  - containerPort: 4000
+                  # Example environment variables for an orders database
+                  env:
+                  - name: DATABASE_HOST
+                    value: "order-db"
+                  - name: DATABASE_PORT
+                    value: "5432"
+                  - name: DATABASE_NAME
+                    value: "orders"
+                  - name: DATABASE_USER
+                    valueFrom:
+                      secretKeyRef:
+                        name: order-db-secret
+                        key: username
+                  - name: DATABASE_PASSWORD
+                    valueFrom:
+                      secretKeyRef:
+                        name: order-db-secret
+                        key: password
+                  readinessProbe:
+                    httpGet:
+                      path: /healthz
+                      port: 4000
+                    initialDelaySeconds: 5
+                    periodSeconds: 10
+                  livenessProbe:
+                    httpGet:
+                      path: /healthz
+                      port: 4000
+                    initialDelaySeconds: 15
+                    periodSeconds: 20
+
   - Define the ArgoCD application YAMLs to manage these deployments.
 
+    - <ins>**product-service**</ins>
+
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: product-service
+            namespace: argocd
+            labels:
+              app.kubernetes.io/part-of: product-service
+          spec:
+            project: default
+          
+            # Source of truth: your Git repository containing the K8s manifests
+            source:
+              repoURL: "https://https://github.com/OlisehKN/ecommerce-platform.git"
+              targetRevision: main
+              path: "deploy/k8s/product-service"
+          
+            # Where to deploy in the cluster
+            destination:
+              server: "https://kubernetes.default.svc"
+              namespace: product-service
+          
+            # Automatically sync changes and self-heal drift
+            syncPolicy:
+              automated:
+                prune: true        # delete resources removed from Git
+                selfHeal: true     # revert out-of-band changes
+              syncOptions:
+                - CreateNamespace=true  # create namespace if it doesn't exist
+          
+            # Health checks based on CRDs
+            # (ArgoCD can assess Deployment and Service health by default)
+
+    - <ins>**cart-service**</ins>
+
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: cart-service
+            namespace: argocd
+            labels:
+              app.kubernetes.io/part-of: cart-service
+          spec:
+            project: default
+          
+            # Source repo containing the cart-service K8s manifests
+            source:
+              repoURL: "https://https://github.com/OlisehKN/ecommerce-platform.git"
+              targetRevision: main
+              path: "deploy/k8s/cart-service"
+          
+            # Deploy into this cluster and namespace
+            destination:
+              server: "https://kubernetes.default.svc"
+              namespace: cart-service
+          
+            # Auto-sync and self-heal
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+              syncOptions:
+                - CreateNamespace=true
+
+    - <ins>**order-service**</ins>
+
+          apiVersion: argoproj.io/v1alpha1
+          kind: Application
+          metadata:
+            name: order-service
+            namespace: argocd
+            labels:
+              app.kubernetes.io/part-of: order-service
+          spec:
+            project: default
+          
+            # Git repository containing K8s manifests for order-service
+            source:
+              repoURL: "https://github.com/OlisehKN/ecommerce-platform.git"
+              targetRevision: main
+              path: "deploy/k8s/order-service"
+          
+            # Deploy into this cluster and namespace
+            destination:
+              server: "https://kubernetes.default.svc"
+              namespace: order-service
+          
+            # Automated sync and self-heal
+            syncPolicy:
+              automated:
+                prune: true        # remove resources if deleted in Git
+                selfHeal: true     # revert drift
+              syncOptions:
+                - CreateNamespace=true  # ensure namespace exists
+            
 ### <ins>**Task 8: Create Kubernetes Services:**</ins>
 
   - Create Kubernetes service Yaml files for each microservice, specifying the type as **ClusterIP**.
 
+    - **product-service**
+
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: product-service
+            labels:
+              app: product-service
+          spec:
+            type: ClusterIP
+            ports:
+            - port: 80
+              targetPort: 3000
+              protocol: TCP
+              name: http
+            selector:
+              app: product-service
+
+    - **cart-service**
+          
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: cart-service
+            labels:
+              app: cart-service
+          spec:
+            type: ClusterIP
+            ports:
+            - port: 80
+              targetPort: 3000
+              protocol: TCP
+              name: http
+            selector:
+              app: cart-service
+
+    - **order-service**
+
+          apiVersion: v1
+          kind: Service
+          metadata:
+            name: order-service
+            labels:
+              app: order-service
+          spec:
+            type: ClusterIP
+            ports:
+            - port: 80
+              targetPort: 4000
+              protocol: TCP
+              name: http
+            selector:
+              app: order-service
+
   - Use ArgoCD to apply the services to your cluster.
+
+    - I used the `kubectl apply` command
